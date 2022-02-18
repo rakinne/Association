@@ -5,7 +5,13 @@
 // Author : Rakinne Foote
  
 const START_OF_LINK = 'http://data.nba.net';
-
+const MAIN_LINK = 'http://data.nba.net/10s/prod/v1/today.json';
+const bannedTeams = [
+    'Utah White',
+    'Utah Blue',
+    'Team LeBron',
+    'Team Team Durant'
+]
 
 class Links
 {
@@ -27,7 +33,7 @@ class Links
 
     setLinks(links)
     {
-        this.links = links
+        this.links = links;
     }
 
 }
@@ -55,11 +61,12 @@ class Game
 
     homeTeam()
     {
-        return this.homeTeam.triCode;
+        return this.home
     }
 }
 
-class Team{
+class Team
+{
     /** Team 
      * - teamId
      * - city
@@ -72,60 +79,145 @@ class Team{
      * 
      * 
     */
-    constructor(team)
+    constructor(teamId, city, nickname, fullname)
     {
-        this.id = team.teamId;
-        this.city = team.city;
-        this.name = team.nickname;
-        this.fullName = team.fullname;
+        this.id = teamId;
+        this.city = city;
+        this.name = nickname;
+        this.fullName = fullname;
+
+        this.wins = 0;
+        this.losses = 0;
+        this.schedule = []; // type : game
+        this.roster = []; // type : player
     }
+
+
 }
 
-// Any time I need to use FETCH just come here
-// and use the await keywork on giveToFetch for whatever 
-// data extracted from the link
-async function retrieveJSONData(link)
+/**
+ * playerId:
+ * - first and last name
+ * - teamId
+ * - jersey number
+ * - position
+ * - heightFeet
+ * - heightInches
+ * - weightPounds
+ * - date of birth
+ * - all teams played for (array)
+ * - draft object
+ * - 
+ */
+class Player 
 {
-    const fetch = require('node-fetch')
-
-    try 
+    constructor(id, currTeam, first, last, jersey, pos, heightFt, heightIn, DOB, teams, draftDetails)
     {
-        let data = await giveToFetch(link);
-        let linkData = Object.assign({}, data)
-
-        return linkData
-
-    } catch(err) 
-    {
-        console.log('Error retrieving data from fetch OR Error Constructing Links Object : ' , err);
+        this.id = id
+        this.currentTeam = currTeam
+        this.fullName = first + ' ' + last;
+        this.jerseyNumber = jersey;
+        this.position = pos;
+        this.height = heightFt + "'" + heightIn;
+        this.DOB = DOB;
+        this.playedFor = teams;
+        this.draftDetails = draftDetails;
     }
 
-    async function _fetch(link) 
-    { 
-        const res = await fetch(link)
-        const data = await res.json()
-        return data
-    }
 
-    function giveToFetch(link) 
-    {
-        return _fetch(link)
-    }
 }
-
 
 async function main() 
 {
-    const links = new Links()
+    const LEAGUE = []
+    const TEAMS_BY_ID = {}
+    
 
-    // Setting Links
-    let linkKV = await retrieveJSONData('http://data.nba.net/10s/prod/v1/today.json')
-    links.setLinks(linkKV.links)
+    const linkKV = await retrieveJSONData(MAIN_LINK)
+    const links = new Links();
+    links.setLinks(linkKV.links);
+
+    let allTeamsJsonData = await jsonFor('teams');
+    allTeamsJsonData = allTeamsJsonData.league.standard;
+    generateTeamPopulateLeague(allTeamsJsonData);
+
+    // Task : Get all players, group all players by ID, add each group of players to their respective team by ID
+    let allPlayersJsonData = await jsonFor('leagueRosterPlayers');
+    allPlayersJsonData = allPlayersJsonData.league.standard;
+    generatePlayerPopulateTeam(allPlayersJsonData)
 
 
-    let scoreboardLink = links.getLinkFor('todayScoreboard')
-    let retrievedData = await retrieveJSONData(scoreboardLink);
-    let rd = retrievedData.games[0]; // work with the first game for testing
+
+    async function retrieveJSONData(link)
+    {
+        const fetch = require('node-fetch')
+
+        try 
+        {
+            let data = await giveToFetch(link);
+            let linkData = Object.assign({}, data)
+
+            return linkData
+
+        } catch(err) 
+        {
+            console.log('Error retrieving data from fetch OR Error Constructing Links Object : ' , err);
+        }
+
+        function giveToFetch(link) 
+        {
+            return _fetch(link)
+        }
+
+        async function _fetch(link) 
+        { 
+            const res = await fetch(link)
+            const data = await res.json()
+            return data
+        }
+    }
+
+    async function jsonFor(leagueLink)
+    {
+        let link = links.getLinkFor(leagueLink);
+        let retrievedData = await retrieveJSONData(link)
+        return retrievedData
+    }
+
+    function generatePlayerPopulateTeam(playerData)
+    {
+        for (let player of playerData) {
+            let teamId = player.teamId;
+            let newPlayer = new Player(player.personId, player.teamId, player.firstName, player.lastName,
+                player.jersey, player.pos, player.heightFeet, player.heightInches, player.dateOfBirthUTC, player.teams,
+                player.draft)
+
+            if (TEAMS_BY_ID[teamId]) { 
+                let teamArray = TEAMS_BY_ID[teamId];
+                teamArray.push(newPlayer)
+                TEAMS_BY_ID[teamId] = teamArray
+            } else { TEAMS_BY_ID[teamId] = [newPlayer] }
+        }
+    }
+    
+    function generateTeamPopulateLeague(teamData)
+    {
+        for (let i = 0; i < teamData.length; i++) 
+        {
+            let currTeam = teamData[i];
+            let team = new Team(currTeam.teamId, currTeam.city, currTeam.nickname, currTeam.fullName);
+            
+            if (bannedTeams.includes(team.fullName)) {
+                continue
+            } else {
+                LEAGUE.push(team);
+            }
+        }
+    }
+
+    // console.log("Logging Teams: ", LEAGUE)
+    console.log("Logging Players: ", TEAMS_BY_ID['1610612748']) // testing
+
 
     function interactWithTeam()
     {
@@ -134,17 +226,12 @@ async function main()
         
         console.log(game)
     }
-    
-    // interactWithTeam()
-
-    // TODO: getting undefined, see old project for how i dealt with it
-    let teamsLink = links.getLinkFor('teams');
-    let retrievedData1 = await retrieveJSONData(teamsLink);
-    let rd1 = retrievedData1.standard
-    console.log(rd1)
 }
 
 
 console.time('main')
 main()
 console.timeEnd('main')
+
+
+
