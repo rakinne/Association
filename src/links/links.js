@@ -67,18 +67,6 @@ class Game
 
 class Team
 {
-    /** Team 
-     * - teamId
-     * - city
-     * - team name
-     * - team full name
-     * - arena (get arena name from team ID and game instance)
-     * - wins
-     * - losses
-     * - roster
-     * 
-     * 
-    */
     constructor(teamId, city, nickname, fullname)
     {
         this.id = teamId;
@@ -89,26 +77,20 @@ class Team
         this.wins = 0;
         this.losses = 0;
         this.schedule = []; // type : game
-        this.roster = []; // type : player
+        this.roster; // type : player
     }
 
+    setRoster(roster)
+    {
+        this.roster = roster
+    }
 
+    getId()
+    {
+        return this.id;
+    }
 }
 
-/**
- * playerId:
- * - first and last name
- * - teamId
- * - jersey number
- * - position
- * - heightFeet
- * - heightInches
- * - weightPounds
- * - date of birth
- * - all teams played for (array)
- * - draft object
- * - 
- */
 class Player 
 {
     constructor(id, currTeam, first, last, jersey, pos, heightFt, heightIn, DOB, teams, draftDetails)
@@ -137,15 +119,14 @@ async function main()
     const links = new Links();
     links.setLinks(linkKV.links);
 
-    let allTeamsJsonData = await jsonFor('teams');
-    allTeamsJsonData = allTeamsJsonData.league.standard;
-    generateTeamPopulateLeague(allTeamsJsonData);
-
     // Task : Get all players, group all players by ID, add each group of players to their respective team by ID
     let allPlayersJsonData = await jsonFor('leagueRosterPlayers');
     allPlayersJsonData = allPlayersJsonData.league.standard;
-    generatePlayerPopulateTeam(allPlayersJsonData)
+    generatePlayerPopulateTeam(allPlayersJsonData);
 
+    let allTeamsJsonData = await jsonFor('teams');
+    allTeamsJsonData = allTeamsJsonData.league.standard;
+    generateTeamPopulateLeague(allTeamsJsonData);
 
 
     async function retrieveJSONData(link)
@@ -206,6 +187,10 @@ async function main()
         {
             let currTeam = teamData[i];
             let team = new Team(currTeam.teamId, currTeam.city, currTeam.nickname, currTeam.fullName);
+
+            // a little aside
+            team.setRoster(getRoster(currTeam.teamId))
+            
             
             if (bannedTeams.includes(team.fullName)) {
                 continue
@@ -215,9 +200,15 @@ async function main()
         }
     }
 
-    // console.log("Logging Teams: ", LEAGUE)
-    console.log("Logging Players: ", TEAMS_BY_ID['1610612748']) // testing
+    // console.log("Teams by ID :  ", TEAMS_BY_ID)
+    console.log("Logging Teams: ", LEAGUE[17].roster[1].playedFor)
+    // console.log("Logging Players: ", TEAMS_BY_ID['1610612751']) // testing
 
+    function getRoster(teamId)
+    {
+        let roster = TEAMS_BY_ID[teamId];
+        return roster;
+    }
 
     function interactWithTeam()
     {
