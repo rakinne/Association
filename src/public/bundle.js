@@ -277,11 +277,17 @@ function populateTabularData(team) {
     team.roster.forEach(player => {
         let row = tableBody.insertRow();
         const td = row.insertCell()
+        const td1 = row.insertCell()
+        const td2 = row.insertCell()
+        const td3 = row.insertCell()
+        const td4 = row.insertCell()
+
+
         td.appendChild(document.createTextNode(`${player.fullName}`))
-        td.appendChild(document.createTextNode(`${player.height}`))
-        td.appendChild(document.createTextNode(`${player.jerseyNumber}`))
-        td.appendChild(document.createTextNode(`${player.position}`))
-        td.appendChild(document.createTextNode(`${player.curentTeam}`))
+        td1.appendChild(document.createTextNode(`${player.height}`))
+        td2.appendChild(document.createTextNode(`${player.jerseyNumber}`))
+        td3.appendChild(document.createTextNode(`${player.position}`))
+        td4.appendChild(document.createTextNode(`${team.fullName}`))
     });
 }
 
